@@ -1,0 +1,53 @@
+Very simple CPU:
+
+Registers: (all 32bit signed)
+r0-r15
+where r0 is pc, pointing to next instruction
+and r1 is sp, pointing to topmost element, growing back in memory
+
++ invisible compare buffer, accessed by jump conditions
+
+r0 starts at 00000000,
+r1 starts at 0FFFFFFF
+
+Memory:
+Default configuration is:
+0000_0000 - 0FFF_FFFF: 2^28=256MiB main memory
+
+1000_0000: char output stream
+1000_0001: blocking char input stream
+
+
+32bit base unit, each instruction is:
+Constant:
+	SET R0, X	1RXX_XXXX set register R to X
+
+Load/Store:
+	LDR D, [S]	0000_00DS Load value pointed by register S to register D
+	STR S, [D]  0001_00DS Store value in register S to memory at register D
+	PUSH R		0010_000R Put register R on stack (r1)
+	POP R		0011_000R Pop element from stack into R
+
+Arithmetic:
+	ADD D, A, B	0100_0DAB
+	SUB D, A, B	0101_0DAB
+	MUL	D, A, B 0102_0DAB
+	DIV D, A, B 0103_0DAB
+	MOD D, A, B 0104_0DAB
+
+	AND D, A, B 0110_0DAB
+	OR  D, A, B 0111_0DAB
+	NOT D, A    0112_0DA0
+	XOR D, A, B 0113_0DAB
+
+	CMP A, B	0120_00AB_0000_0000 store results in compare buffer
+
+Branching:
+	IF?			0200_000C_0000_0000 if condition C is not met, jump over next instruction
+			C: 0b<>!=, only one option must be true
+			?: must be one or more of <>!=
+
+
+Assembler:
+ABC: sprungmarke
+.loop:	lokale sprungmarke
