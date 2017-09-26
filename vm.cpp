@@ -9,6 +9,7 @@ const int MEM_SIZE = 256 * 1024 * 1024; //256MiB
 
 int32_t mem[MEM_SIZE];
 int32_t reg[16];
+int32_t cmp;
 
 void exitError(std::string const& msg) {
 	std::cout << "Error: " << msg << "\nExiting now.\n";
@@ -74,8 +75,24 @@ void memoryViewer() {
 
 void registerViewer() {
 	for(int i=0;i<16;++i) {
-		std::cout << "r"<<i<<":\t"<<intToHex(reg[i])<<std::endl;
+		std::cout << "r"<<i<<":\t"<<intToHex(reg[i])<<"  ("<<reg[i]<<")"<<std::endl;
 	}
+	std::cout << "cmp:\t"<<intToHex(cmp)<< " "
+		<< ((cmp&8)?'<':'.')
+		<< ((cmp&4)?'>':'.')
+		<< ((cmp&2)?'!':'.')
+		<< ((cmp&1)?'=':'.') << std::endl;
+}
+
+int32_t readMem(int32_t addr) {
+	if(addr <= 0x0FFFFFFF) return mem[addr/4];
+	if(addr == 0x10000000) { char c; std::cin.get(c); return c; }
+	if(addr == 0x10000004) { int32_t i; std::cin >> i; return i; }
+}
+void writeMem(int32_t addr, int32_t val) {
+	if(addr <= 0x0FFFFFFF) mem[addr/4] = val;
+	if(addr == 0x10000000) std::cout << ((char)val) << std::flush;
+	if(addr == 0x10000004) std::cout << val << std::flush;
 }
 
 void doCycle() {
@@ -102,6 +119,26 @@ void doCycle() {
 		reg[(inst>>8)&0xF] = ~reg[(inst>>4)&0xF];
 	else if(inst>>16 == 0x0113) //XOR
 		reg[(inst>>8)&0xF] = reg[(inst>>4)&0xF] ^ reg[inst&0xF];
+	else if(inst>>16 == 0x0120) { //CMP
+		auto a = reg[(inst>>4)&0xF]; auto b = reg[inst&0xF];
+		cmp = 0;
+		if(a<b)  cmp |= 8;
+		if(a>b)  cmp |= 4;
+		if(a!=b) cmp |= 2;
+		if(a==b) cmp |= 1;
+	}
+
+	else if(inst>>16 == 0x0000) //LDR
+		reg[(inst>>4)&0xF] = readMem(reg[inst&0xF]);
+	else if(inst>>16 == 0x0001) //STR
+		writeMem(reg[inst&0xF], reg[(inst>>4)&0xF]);
+	else if(inst>>16 == 0x0010) //PUSH
+		{ reg[1]+=4; mem[reg[1]/4] = reg[inst&0xF]; }
+	else if(inst>>16 == 0x0011) //POP
+		{ reg[inst&0xF] = mem[reg[1]/4]; reg[1] -= 4; }
+
+	else if(inst>>16 == 0x0200) //IFX
+		{ if(!(inst & cmp)) reg[0] += 4; }
 
 	else std::cout << "Unknown Instruction:" << std::hex << inst << " at pc " << reg[0] << std::endl;
 
@@ -129,11 +166,11 @@ int main(int argc, char** argv) {
 		std::cout << "> " << std::flush;
 		std::string cmd;
 		std::cin >> cmd;
-		     if(cmd == "mem") memoryViewer();
-		else if(cmd == "reg") registerViewer();
+		     if(cmd == "mem"||cmd=="m") memoryViewer();
+		else if(cmd == "reg"||cmd=="r") registerViewer();
 		else if(cmd == "exit") exit(0);
 		else if(cmd == "run") for(;;) doCycle();
-		else if(cmd == "next") doCycle();
+		else if(cmd == "next"||cmd=="n") doCycle();
 		else std::cout << "Command " << cmd << " unknown." << std::endl;
 	}
 }

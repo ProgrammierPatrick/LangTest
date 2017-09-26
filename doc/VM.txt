@@ -11,20 +11,25 @@ r0 starts at 00000000,
 r1 starts at 0FFFFFFF
 
 Memory:
+All Memory pointes are byte oriented.
+
 Default configuration is:
 0000_0000 - 0FFF_FFFF: 2^28=256MiB main memory
 
-1000_0000: char output stream
-1000_0001: blocking char input stream
+1000_0000: char i/o:
+	reading: read one char (blocking)
+	writing: but char to screen
 
+1000_0004: number i/o:
+	like char i/o, prints and scans numbers
 
 32bit base unit, each instruction is:
 Constant:
 	SET R0, X	1RXX_XXXX set register R to X
 
 Load/Store:
-	LDR D, [S]	0000_00DS Load value pointed by register S to register D
-	STR S, [D]  0001_00DS Store value in register S to memory at register D
+	LDR V, A	0000_00VA Load value pointed by register A to register V
+	STR V, A	0001_00VA Store value in register V to memory at register A
 	PUSH R		0010_000R Put register R on stack (r1)
 	POP R		0011_000R Pop element from stack into R
 
@@ -40,12 +45,18 @@ Arithmetic:
 	NOT D, A    0112_0DA0
 	XOR D, A, B 0113_0DAB
 
-	CMP A, B	0120_00AB_0000_0000 store results in compare buffer
+	CMP A, B	0120_00AB store results in compare buffer
 
 Branching:
-	IF?			0200_000C_0000_0000 if condition C is not met, jump over next instruction
+	IF?			0200_000C if condition C is not met, jump over next instruction
 			C: 0b<>!=, only one option must be true
 			?: must be one or more of <>!=
+	IFL			//C=0b1000
+	IFM			//C=0b0100
+	IFLE		//C=0b1001
+	IFME		//C=0b0101
+	IFE			//C=0b0001
+	IFNE		//C=0b0010
 
 
 Assembler:
