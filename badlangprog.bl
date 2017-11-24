@@ -1,0 +1,19 @@
+var io;
+$io = 0x1000_0004;
+
+var maxnum;
+$maxnum = *io;
+
+var a;
+var b;
+
+$a = 0;
+$b = 1;
+
+var temp;
+while $b < $maxnum: {
+	$temp = $a + $b;
+	$a = $b;
+	$b = $temp;
+	*io = $b;
+}

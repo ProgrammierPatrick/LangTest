@@ -1,0 +1,52 @@
+BAD Programming Language
+========================
+
+no methods, no class; all code in main body
+
+Constructs:
+	if [CONDITION] : [ACTION]
+	if [CONDITION] : [ACTION]
+	else [ACTION]
+
+	while [CONDITION] : [ACTION]
+
+	[ACTION]
+		Something; or { Something; Someting; ... }
+
+
+Variables:
+	All variables are 32bit signed)
+	var [name];			declaration
+	$name				usage
+	&name				adress
+	$name = [VALUE]		Assignment
+
+Math:
+	&					(strongest)
+	|
+	^
+
+	* / %
+	+ -
+
+	> < >= <= != ==		(weakest)
+
+	( ) for backets
+
+Pointers:
+	every variable can be a pointer
+
+	R-Value:
+		$name gets Value stored inside variable
+		&name gets pointer to variable
+
+	L-Value:
+		$name store value in variable
+		*name store value in pointed variable
+
+		var name;
+		$name = 0x10000000;
+		*name = k
+
+Constants:
+	1-9(0-9)*:  32bit integer number

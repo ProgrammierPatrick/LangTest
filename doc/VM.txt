@@ -18,6 +18,9 @@ Default configuration is:
 
 1000_0000: char i/o:
 	reading: read one char (blocking)
+
+Constants:
+	1-9(0-9)*:  32bit integer number
 	writing: but char to screen
 
 1000_0004: number i/o:
