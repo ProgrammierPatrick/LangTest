@@ -88,11 +88,13 @@ int32_t readMem(int32_t addr) {
 	if(addr <= 0x0FFFFFFF) return mem[addr/4];
 	if(addr == 0x10000000) { char c; std::cin.get(c); return c; }
 	if(addr == 0x10000004) { int32_t i; std::cin >> i; return i; }
+	std::cout << "read from invalid memory:" << std::hex << addr << std::endl;
 }
 void writeMem(int32_t addr, int32_t val) {
 	if(addr <= 0x0FFFFFFF) mem[addr/4] = val;
-	if(addr == 0x10000000) std::cout << ((char)val) << std::flush;
-	if(addr == 0x10000004) std::cout << val << std::flush;
+	//else if(addr == 0x10000000) std::cout << ((char)val) << std::flush;
+	//else if(addr == 0x10000004) std::cout << val << std::flush;
+	else std::cout << "written to invalid memory:" << std::hex << addr << std::endl;
 }
 
 void doCycle() {
@@ -171,6 +173,7 @@ int main(int argc, char** argv) {
 		else if(cmd == "exit") exit(0);
 		else if(cmd == "run") for(;;) doCycle();
 		else if(cmd == "next"||cmd=="n") doCycle();
+		else if(cmd == "help"||cmd=="h") std::cout << "mem(m) reg(r) run next(n) exit help(h)" << std::endl;
 		else std::cout << "Command " << cmd << " unknown." << std::endl;
 	}
 }

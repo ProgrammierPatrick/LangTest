@@ -172,7 +172,7 @@ int main(int argc, char **argv) {
 								cmd |= GET_REGNUM(args[0])<<24;
 								if(args[1][0]=='x') cmd |= std::strtoul(args[1].substr(1).c_str(),NULL,16);
 								else cmd |= std::stoi(args[1])&0xFFFFFF;
-							} else exitError("Unsupported Opcode "+opcode);
+							} else exitError("Unsupported Opcode "+opcode+" <Num> at Token "+std::to_string(i));
 		
 							i += 4;
 						} else if(tokens[i+3].type=="idf") {
@@ -180,7 +180,13 @@ int main(int argc, char **argv) {
 							if(tokens[i+4].type=="endl") {
 		
 								//HANDLE EXPRESSION <OPCODE ARG1, ARG2>
-								if(opcode=="NOT") {
+								if(opcode=="SET") {
+									cmd = 0x10000000;
+									cmd |= GET_REGNUM(args[0])<<24;
+									if(labels.find(args[1]) == labels.end()) exitError("Cannot find Label "s+args[1]);
+                                    cmd |= labels[args[1]] && 0xFFFFFF;
+								}
+								else if(opcode=="NOT") {
 									cmd = 0x01120000;
 									cmd |=GET_REGNUM(args[0])<<8|GET_REGNUM(args[1])<<4;
 								} else if(opcode=="CMP") {
@@ -192,7 +198,7 @@ int main(int argc, char **argv) {
 								} else if(opcode=="STR") {
 									cmd = 0x00010000;
 									cmd|=GET_REGNUM(args[0])<<4|GET_REGNUM(args[1]);
-								} else exitError("Unsupported Opcode"+opcode);
+								} else exitError("Unsupported Opcode "+opcode+" <IDF> at Token "+std::to_string(i));
 								i += 4;
 							} else if(tokens[i+4].type==",") {
 								ASSERT_TOKEN(i+5);
@@ -236,8 +242,8 @@ int main(int argc, char **argv) {
 									cmd = 0x01130000;
 									cmd |= GET_REGNUM(args[0])<<8;
 									cmd |= GET_REGNUM(args[1])<<4 | GET_REGNUM(args[2]);
-								} else exitError("Unsupported Opcode "+opcode);
-								
+								} else exitError("Unsupported Opcode "+opcode+" <IDF> <IDF> at Token "+std::to_string(i));
+
 								i += 6;
 							} else exitError("Comma or linened exprected after "+tokens[i+3].val);
 						} else exitError("Identifier or Number expected after "+tokens[i+2].val);

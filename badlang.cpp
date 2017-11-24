@@ -5,6 +5,7 @@
 #include <inttypes.h>
 #include <memory>
 #include <algorithm>
+#include <unordered_map>
 
 using namespace std::literals::string_literals;
 void exitError(std::string const& str, int y, int x) {
@@ -41,7 +42,12 @@ void putToken(std::string const& str, int y, int x) {
 	else if(str[0] == '$') tokens.push_back(Token("l_var", str.substr(1),y,x));
 	else if(str[0] == '*') tokens.push_back(Token("l_ptr", str.substr(1),y,x));
 	else if(str[0] == '&') tokens.push_back(Token("l_adr", str.substr(1),y,x));
-	else if((str[0] >= '0') && (str[0] <= '9')) tokens.push_back(Token("num", str,y,x));
+	else if((str[0] >= '0') && (str[0] <= '9')) {
+		std::string s2 = str;
+		s2.erase(std::remove(s2.begin(),s2.end(),'_'), s2.end());
+		if(s2[1] == 'x') tokens.push_back(Token("num", s2.substr(1),y,x));
+		else tokens.push_back(Token("num", s2,y,x));
+	}
 	else tokens.push_back(Token("name", str, y,x));
 }
 
@@ -212,7 +218,7 @@ int parse(int pos, NodeType type, ParseNode *parent) {
 		// Use Dijkstras Shunting Yard Algorithm to convert Infix Notation to Postfix
 		std::vector<std::string> operatorStack;
 
-		for(;;++pos) {
+		for(;;pos++) {
 			bool isOperator = false;
 			for(std::string s : operators)
 				if(s == tokens[pos].type)
@@ -240,9 +246,10 @@ int parse(int pos, NodeType type, ParseNode *parent) {
 				operatorStack.pop_back();
 			}
 			else if((tokens[pos].type == ";") || (tokens[pos].type == ":")) {
-				if(!operatorStack.empty()) newNode->args.push_back(operatorStack.back());
-				operatorStack.pop_back();
-				if(!operatorStack.empty()) exitError("Error while doing Shunting Yard Algorithmus",-1,-1);
+				while(!operatorStack.empty()) {
+					newNode->args.push_back(operatorStack.back());
+					operatorStack.pop_back();
+				}
 				return pos;
 			}
 			else {
@@ -299,7 +306,7 @@ const int stackBase = 0x00100000;
 struct StackFrame {
 	int base;
 	std::vector<Var> variables;
-	int length() { return variables.size(); }
+	int length() { return variables.size()*4; }
 	int nextAddr() { return base + length(); }
 	StackFrame(int b) { base = b; }
 };
@@ -328,7 +335,13 @@ void addVar(std::string &name) {
 //bool contains(std::vector<T> &vec, T &el) {
 //	return std::find(vec.begin(), vec.end(), el) != vec.end();
 //}
+std::unordered_map<std::string, std::string> mathOperators = { {"&","AND"},{"|","OR"},{"^","XOR"},
+																{"*","MUL"},{"/","DIV"},{"%","MOD"},
+																{"+","ADD"},{"-","SUB"}};
 
+std::unordered_map<std::string, std::string> compareOperators = { {">","IFM"},{"<","IFL"},
+																  {">=","IFME"}, {"<=", "IFLE"},
+																  {"!=", "IFNE"}, {"==","IFE"}};
 void generateNode(ParseNode *node = &parseTreeRoot) {
 	if(node->type == BLOCK) {
 		//new scope
@@ -343,19 +356,80 @@ void generateNode(ParseNode *node = &parseTreeRoot) {
 				exitError("Variable "s+node->args[0]+" already declared.",-1,-1);
 			addVar(node->args[0]);
 		} else if(node->operation == "assign") {
-			if(!existsVar(node->args[1])) exitError("Variable "s+node->args[1]+" does not exists.", -1,-1);
+			if (!existsVar(node->args[1])) exitError("Variable "s + node->args[1] + " does not exists.", -1, -1);
 			Var *var = getVar(node->args[1]);
 
-            generateNode(node->childs[0]);
+			//Do complete R_Val
+			generateNode(node->childs[0]);
 
-			if(node->args[0] == "var") {
+			if (node->args[0] == "var") {
 				ass += "POP R2\n"s
-				+ "SET R3, " + std::to_string(var->address) + "\n"
-				+ "STR R2, R3\n\n";
+					   + "SET R3, #" + std::to_string(var->address) + "\n"
+					   + "STR R2, R3\n\n";
 			}
+		} else if(node->operation == "while") {
+			int mark = nextJumpMark++;
+			ass += "whilestart"s + std::to_string(mark) + ":\n\n";
+
+			//compute property
+			generateNode(node->childs[0]);
+
+			ass += "POP R2\n";
+			ass += "SET R3, #0\n";
+			ass += "CMP R2, R3\n";
+            ass += "IFE\n";
+            ass += "SET R0, whileend"s + std::to_string(mark) + "\n\n";
+
+			//compute body
+			generateNode(node->childs[1]);
+
+			ass += "SET R0, whilestart"s + std::to_string(mark) + "\n\n";
+			ass += "whileend"s+ std::to_string(mark) + ":\n\n";
+
 		} else ass += "Unsupported Instruction:"s+node->operation+"\n";
 	} else if (node->type == R_VAL) {
-		ass += "R-Val\n\n";
+        for(int i=0; i < node->args.size(); ++i) {
+			if(node->args[i] == "num") {
+				ass += "SET R2, #"s + node->args[i + 1] + "\n";
+				ass += "PUSH R2\n\n";
+				++i;
+			} else if(node->args[i] == "l_var") {
+				Var *var = getVar(node->args[i + 1]);
+				ass += "SET R2, #"s + std::to_string(var->address) + "\n";
+				ass += "LDR R3, R2\n";    //value loaded
+				ass += "PUSH R3\n\n";
+				++i;
+
+			} else if(node->args[i] == "l_ptr") {
+				Var *var = getVar(node->args[i + 1]);
+				ass += "SET R2, #"s + std::to_string(var->address) + "\n";
+				ass += "LDR R3, R2\n";    //address loaded
+				ass += "LDR R3, R3\n";    //value loaded
+				ass += "PUSH R3\n\n";
+				++i;
+			} else if(node->args[i] == "l_adr") {
+				Var *var = getVar(node->args[i + 1]);
+				ass += "SET R2, "s + std::to_string(var->address) + "\n";
+				ass += "PUSH R2\n\n";
+				++i;
+			} else if(mathOperators.find(node->args[i]) != mathOperators.end()) {
+				ass += "POP R3\n";
+				ass += "POP R2\n";
+				ass += mathOperators[node->args[i]] + " R3, R2, R3\n";
+				ass += "PUSH R3\n\n";
+			} else if(compareOperators.find(node->args[i]) != compareOperators.end()) {
+				ass += "POP R3\n";
+				ass += "POP R2\n";
+				ass += "CMP R2, R3\n";
+				ass += "SET R2, #1\n";
+				ass += compareOperators[node->args[i]] + "\n";
+				ass += "SET R2, #0\n";
+				ass += "PUSH R2\n\n";
+			} else {
+				ass += "Unsupported R-Val Item "s + node->args[i] + "\n¸n";
+				break;
+			}
+		}
 	} else exitError("Unsupported Node type.",-1,-1);
 }
 
@@ -390,5 +464,13 @@ int main(int argc, char **argv) {
 	generateNode();
 	
 	std::cout << "\nGode generated.\nResults:\n" << ass << std::endl;
-	
+
+	std::ofstream ofile(argv[1]);
+	if(!ofile.is_open()) exitError("Could not open file "s+argv[1], 0, 0);
+
+	ofile << ass << std::endl;
+
+	ofile.close();
+
+	return 0;
 }

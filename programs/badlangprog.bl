@@ -1,5 +1,5 @@
 var io;
-$io = 0x1000_0004;
+$io = (0x1000 * 0x10000) + 4;
 
 var maxnum;
 $maxnum = *io;

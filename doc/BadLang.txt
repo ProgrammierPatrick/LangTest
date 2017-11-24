@@ -3,6 +3,9 @@ BAD Programming Language
 
 no methods, no class; all code in main body
 
+True:  non-zero
+False: 0
+
 Constructs:
 	if [CONDITION] : [ACTION]
 	if [CONDITION] : [ACTION]
@@ -50,3 +53,11 @@ Pointers:
 
 Constants:
 	1-9(0-9)*:  32bit integer number
+
+
+ABI:
+====
+
+Start Variable Stack At 0x00100000 and allocate all variables there.
+
+Registers: R2 and R3 used for Temp, stack for Calculations
